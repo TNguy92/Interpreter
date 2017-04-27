@@ -1,30 +1,14 @@
 /**
- *
- *
+ * Created by Tenorio on 4/24/2017.
  */
+public class Main{
 
-import java.io.*;
-import java.util.Scanner;
-public class main {
-    static String tok;
-
-    public static void main(String[] args){
-
-
-        File file = new File("Sample.lua");
-        try
-        {
-            Scanner scan = new Scanner(file);
-            for (int i = 0; scan.hasNextLine(); i++) {
-                tok = scan.nextLine();
-                System.out.print(tok);
-            }
+    public static void main(String[] args) {
+        try {
+            Interpreter in = new Interpreter("Sample.lua");
         }
-            catch(FileNotFoundException e)
-            {
-                e.printStackTrace();
-            }
-
-
+        catch (Exception e) {
+            System.out.println(e.getMessage());
+        }
     }
 }

@@ -1,331 +1,231 @@
-import java.io.*;
+
+import java.io.IOException;
 import java.util.*;
 
+public class Parser {
 
 
-public class Parser
-{
-    FileInputStream url;
-    Deque<token> tokens;
-    ArrayList<Deque<token>> list;
-    private lexer lex;
-    Parser(FileInputStream urlInput) throws FileNotFoundException
-    {
-        this.url = urlInput;
+    private LinkedList<Token> tokens = new LinkedList();
+    private LinkedList<LinkedList<Token>> list = new LinkedList();
+    private String filename;
+
+    public Parser(String filename) {
+        this.filename = filename;
     }
 
-    // This function will keep receiving the tokens
-    // until the stream closes
-    // it also calls the appropiate function
-    // for a received token
-    public void grabLineCode()
-    {
-            lexer lex= new lexer(this.url);
-            int LineNum = 1;
-            token tok = lex.getNextToken();
-            tokens.push(tok);
-            while (lex.fp.is_open()) {//make sure input is there from file/scanner            what is the fp? I know this is supposed to be a boolean if lexer/file is open.
+    public void populateList() throws IOException {
 
-            if (tokens.getLast().getLexeme() == "if") {
-            foundIF();
-
-            }
-            else if (tokens.peekLast().getLexeme() == "then") {
-            foundTHEN();
-            }
-            else if (tokens.peekLast().getLexeme() == "while") {
-            foundWHILE();
-            }
-            else if (tokens.peekLast().getLexeme() == "do") {
-            foundDO();
-            }
-            else if (tokens.peekLast().getLexeme() == "end") {
-            foudnEND();
-            }
+        Lexer lex = new Lexer(filename);
+        Token tok = lex.nextToken();
+        tokens.addLast(tok);
+        while (lex.fp.ready()) {
 
 
-            else if (tokens.peekLast().getToken() == "ID") {
-            foundID();
+            if (tokens.peekLast().getLexeme().equals( "if")) {
+                foundIF();
+
+            } else if (tokens.peekLast().getLexeme().equals( "then") ){
+                foundTHEN();
+            } else if (tokens.peekLast().getLexeme().equals( "while") ){
+                foundWHILE();
+            } else if (tokens.peekLast().getLexeme().equals( "do") ){
+                foundDO();
+            } else if (tokens.peekLast().getLexeme().equals( "end") ){
+                foudnEND();
+            } else if (tokens.peekLast().getToken().equals( "ID") ){
+                foundID();
             }
 
 
             // Checking for new LINE
-            tok = lex.getNextToken();
+            tok = lex.nextToken();
             if (tokens.peekLast().getLineNum() < tok.getLineNum()) {
-            tokens.addLast(tok);
-            newLine();
-            }
-            else {
-            tokens.addLast(tok);
-            }
-
-
+                tokens.addLast(tok);
+                newLine();
+            } else {
+                tokens.addLast(tok);
             }
 
-            }
 
-            public void newLine() {
-            //Token that belongs to the new line
-            token tmp = tokens.peekLast();
-            tokens.removeLast();
+        }
+
+        lex.fp.close();
+
+    }
+
+    private void newLine() {
+        //Token that belongs to the new line
+        Token tmp = tokens.peekLast();
+        tokens.getLast();
 
 
-
-
-            // checking special cases
-            if (tmp.getLexeme() == "end") {
+        // checking special cases
+        if (tmp.getLexeme().equals( "end") ){
             tokens.addLast(tmp);
             foudnEND();
-            }
-            else if (tmp.getLexeme() == "do") {
+        } else if (tmp.getLexeme().equals( "do") ){
             foundDO();
-            }
-            else if (tmp.getLexeme() == "if") {
-            list.add(tokens);                    //used add because it is an Array List****************
+        } else if (tmp.getLexeme().equals( "if") ){
+            list.addLast(new LinkedList<Token>(tokens));//because reference clear removed all tokens
             tokens.clear();
             tokens.addLast(tmp);
             foundIF();
-            }
-            else if (tmp.getToken() == "COM") {
+        } else if (tmp.getToken().equals( "COM") ){
+            list.addLast(new LinkedList<Token>(tokens));
             tokens.clear();
             tokens.addLast(tmp);
             foundCOMMENT();
-            }
+        }
 
-            // making sure there are no open/closed parenthesis or curly brackets
-            else if (tokens.peekLast().getToken() != "LP" && tokens.peekLast().getToken() != "LC" && tokens.peekLast().getToken() != "RP") {
+        // making sure there are no open/closed parenthesis or curly brackets
+        else if (tokens.peekLast().getToken() != "LP" && tokens.peekLast().getToken() != "LC" && tokens.peekLast().getToken() != "RP") {
 
-            tokens.addLast(new token("SEMI", ";", tokens.peekLast().getLineNum()));  // Make sure correct******************
-            list.add(tokens);
+            tokens.addLast(new Token("SEMI", ";", tokens.peekLast().getLineNum()));
+            list.addLast(tokens);
 
             // Clearing the queue for the new line of the source code
+            list.addLast(new LinkedList<Token>(tokens));
             tokens.clear();
             //Pushing the first token of the new line
             tokens.addLast(tmp);
 
-            }
+        }
 
-            }
+    }
 
     // function for when a comment is found
-            public void foundCOMMENT() {           //Is this really needed? Comments don't get executed******************
+    private void foundCOMMENT() {
 
-            token tmp = tokens.peekLast();
-            tokens.removeLast();
+        Token tmp = tokens.peekLast();
+        tokens.getLast();
 
 
-            String st = tmp.getLexeme();
-            st.erase(0, 2);
-            String cm = "\t//";
-            cm += st;
-            tmp.setLexeme(cm);
-            tokens.addLast(tmp);
+        String st = tmp.getLexeme();
+        String cm = null;
+        int index = 0;
+        for(char c : st.toCharArray()){
+            if(index > 1){
+                cm += c;
             }
+            index++;
+        }
+        tmp.setLexeme(cm);
+        tokens.addLast(tmp);
+    }
 
     // function for when an END is found
-            public void foudnEND() {
+    private void foudnEND() {
 
-            token tmp = new token("RC", "}", tokens.peekLast().getLineNum());
-            if (tokens.peekLast().getLexeme() == "end") {
+        Token tmp = new Token("RC", "}", tokens.peekLast().getLineNum());
+        if (tokens.peekLast().getLexeme().equals( "end") ){
 
             tokens.removeLast();
-            }
-            list.add(tokens);
-            tokens.clear();
-            tokens.addLast(tmp);
+        }
+        list.addLast(new LinkedList<Token>(tokens));
+        tokens.clear();
+        tokens.addLast(tmp);
 
-            }
+    }
 
     // function for when a  while loop is found
-            public void foundWHILE() {
+    private void foundWHILE() {
 
-            tokens.addLast(new token("LP", "(", tokens.peekLast().getLineNum()));
+        tokens.addLast(new Token("LP", "(", tokens.peekLast().getLineNum()));
 
-            }
+    }
 
     // function for when a DO is found
-            public void foundDO() {
+    private void foundDO() {
 
-            tokens.removeLast();
-            tokens.addLast(new token("RP", ")", tokens.peekLast().getLineNum()));  //Not sure if peek Last is correct************ may have to be a pick and remove one
-            tokens.addLast(new token("LC", "{", tokens.peekLast().getLineNum()));
+        tokens.removeLast();
+        tokens.addLast(new Token("RP", ")", tokens.peekLast().getLineNum()));
+        tokens.addLast(new Token("LC", "{", tokens.peekLast().getLineNum()));
 
-            }
+    }
 
     // function for when an IF is found
-            public void foundIF() {
+    private void foundIF() {
 
-            tokens.addLast(new token("LP", "(", tokens.peekLast().getLineNum()));
+        tokens.addLast(new Token("LP", "(", tokens.peekLast().getLineNum()));
 
-            }
+    }
+
     // function for when an THEN is found
-            public void foundTHEN() {
+    private void foundTHEN() {
 
-            token tmp = tokens.peekLast();
-            tokens.removeLast();
-            tokens.addLast(new token("RP", ")", tmp.getLineNum()));
-            tokens.addLast(new token("LC", "{", tmp.getLineNum()));
-            list.add(tokens);
+        Token tmp = tokens.peekLast();
+        tokens.removeLast();
+        tokens.addLast(new Token("RP", ")", tmp.getLineNum()));
+        tokens.addLast(new Token("LC", "{", tmp.getLineNum()));
+        list.addLast(tokens);
 
-            }
+    }
 
     // function for when an comma is found
-            public void foundCOMMA() {
+    private void foundCOMMA() {
 
-            if (tokens.peekFirst().getLexeme() != "local" || tokens.peekFirst().getLexeme() != "type") {
+        if (tokens.getFirst().getLexeme() != "local" || tokens.getFirst().getLexeme() != "type") {
 
-            System.out.print("ERROR ON LINE:" + tokens.peekFirst().getLineNum() + ",  define kind of variable");
-            }
-            }
-
+            System.out.printf("ERROR ON LINE: %d Define kind of variable", tokens.getFirst().getLineNum());
+        }
+    }
 
 
     // function for when an variable is found
-            public void foundID() {
+    private void foundID() {
 
 
-            boolean search = false;
+        boolean search = false;
 
-            if (tokens.peekFirst().getLexeme() == "type") {
+        if (tokens.getFirst().getLexeme().equals( "type") ){
 
-            tokens.peekFirst().setLexeme("auto");
+            tokens.getFirst().setLexeme("int");
 
             return;
-            }
+        }
 
-            // performing the search if the defition of the variable is not within the same line
-            else {
-            for (int i = 0; i < list.size(); i++) {
+        // performing the search if the definition of the variable is not within the same line
+        else {
+            for (LinkedList<Token> queue : list) {
 
-            search = ScanQUEUE(tokens.peekLast().getLexeme(), list.get(i));
+                search = ScanQUEUE(tokens.peekLast().getLexeme(), queue);
             }
 
             // Throw an error if the search return false
             if (!search) {
-            System.out.print("Error in line " + tokens.peekLast().getLineNum() + ": variable '" +  tokens.peekLast().getLexeme() + "' is not defined" );
+                System.out.printf("ERROR ON LINE: %d Define kind of variable", tokens.getFirst().getLineNum());
+                System.out.println();
             }
-            }
+        }
 
 
-
-            }
-
-            public void foundSM(){
-            token tmp = tokens.peekLast();
-            tokens.removeLast();
-            if(tokens.peekLast().getLexeme() == "+")
-            {
-            boolean search = false;
-            for (int i = 0; i < list.size()-1; i++)
-            {
-            search = ScanQUEUE("+", list.get(i));
-            }
-            if (!search)
-            {
-            System.out.print("Error in line" + tokens.peekLast().getLineNum() + " variable is not defined");
-            }
-
-
-            tokens.addLast(tmp);
-
-            }
-            if(tokens.peekFirst().getLexeme() != "ID" || tokens.peekFirst().getLexeme() != "NUM")
-            {
-            System.out.print("Error, Number or ID expected at: " + tokens.peekLast().getLineNum() );
-            }
-            }
-
-            public void foundMUL(){
-            token tmp = tokens.peekLast();
-            tokens.removeLast();
-            if(tokens.peekLast().getLexeme() == "*")
-            {
-            boolean search = false;
-            for (int i = 0; i < list.size()-1; i++)
-            {
-            search = ScanQUEUE(tokens.peekLast().getLexeme(), list[i]);
-            }
-            if (!search)
-            {
-            System.out.print("Error in line" + tokens.peekLast().getLineNum() + " variable is not defined");
-            }
-            tokens.addLast(tmp);
-
-            }
-            if(tokens.peekFirst().getLexeme() != "ID" || tokens.peekFirst().getLexeme() != "NUM")
-            {
-            System.out.print("Error, Number or ID expected at: " + tokens.peekLast().getLineNum());
-            }
-
-            }
-            public void foundSUB(){
-            token tmp = tokens.peekLast();
-            tokens.addLast(tmp);
-            if(tokens.peekLast().getLexeme() == "-")
-            {
-            boolean search = false;
-            for (int i = 0; i < list.size()-1; i++)
-            {
-            search = ScanQUEUE("-", list.get(i));//changed list[i] to list.get(i)***************
-            }
-            if (!search)
-            {
-            System.out.print("Error in line"+ tokens.peekLast().getLineNum() + " variable is not defined");
-            }
-            tokens.addLast(tmp);
-
-            }
-            if(tokens.peekFirst().getLexeme() != "ID" || tokens.peekFirst().getLexeme() != "NUM")
-            {
-            System.out.print("Error, Number or ID expected at: " + tokens.peekLast().getLineNum());
-            }
-
-            }
-
-
-            public void foundDIV(){
-            token tmp = tokens.peekLast();
-            tokens.removeLast();
-            if(tokens.peekLast().getLexeme() == "/")
-            {
-            boolean search = false;
-            for (int i = 0; i < list.size()-1; i++)
-            {
-            search = ScanQUEUE("/", list.get(i));
-            }
-            if (!search)
-            {
-            System.out.print("Error in line" + tokens.peekLast().getLineNum() + " variable is not defined");
-            }
-            tokens.removeLast();//had tmp in here
-
-            }
-            if(tokens.peekFirst().getLexeme() != "ID" || tokens.peekFirst().getLexeme() != "NUM")
-            {
-            System.out.print("Error, Number or ID expected at: " + tokens.peekLast().getLineNum());
-            }
-
-            }
-
-
+    }
 
 
     // Searches a deque for a specific token
-            public boolean ScanQUEUE(String var, Deque<token> deq) {
+    private boolean ScanQUEUE(String var, LinkedList<Token> queue) {
+        // using a lambda function to search the
+        // since we are searching a list of deques of tokens
+        // and looking for a specific string
+        Optional<Token> optional = queue
+                .stream()
+                .filter(token -> token.getLexeme().equals(var))
+                .findFirst();
+
+        return optional.isPresent();
+    }
 
 
-            // using a lambda function to search the
-            // since we are searching a list of deques of tokens
-            // and looking for a specific string
-
-            auto pred = [var]( Token & item) {
-            return item.getLexeme() == var;
-            };
-            auto x = std::find_if(deq.begin(), deq.end(), pred) != deq.end();
-
-            return x;
+    public void printT() {
+        // For every queue in the list
+        for (Deque<Token> queue : list) {
+            // for every token in the queue
+            for (Token token : queue) {
+                // print the lexeme
+                System.out.print(token.getLexeme());
             }
 
-
-
+            System.out.println();
+        }
+    }
 }

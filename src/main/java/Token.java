@@ -1,75 +1,35 @@
-/**
- * CS4380 W01
- Concepts of Programming Languages
- Professor: Jose M Garrido
- Students: Juan E. Tenorio Arzola, Thomas Nguyen, Andrew Shatz
- */
-
-public class token {
-    private String lexeme;
+public class Token {
 
     private String token;
+    private String lexeme;
     private int line;
-    private boolean closed = false;
 
+    public Token(String token, String lexeme, int line){
 
-    public token(String token, String lexer, int line) {
-        this.lexeme = lexer;
         this.token = token;
+        this.lexeme = lexeme;
         this.line = line;
     }
 
-    public token(String token, String lexer, boolean closed) {
-        this.lexeme = lexer;
-        this.token = token;
-        this.closed = closed;
-    }
 
-    public int line() {
+    public int getLineNum(){
         return line;
     }
 
-    boolean closed() {
-        return closed;
-    }
-
-    public void setBool(boolean value) {
-
-        closed = value;
-
-    }
-
-    public void setLexeme(String value) {
-
-        lexeme = value;
-
-    }
-
-    public void setToken(String value) {
-
-        token = value;
-
-    }
-
-    public boolean getBool() {
-
-        return closed;
-    }
-
-    public String getLexeme() {
-
+    public String getLexeme(){
         return lexeme;
-
     }
 
-    public String getToken() {
-
+    public String getToken(){
         return token;
     }
 
-    public int getLineNum() {
-
-        return line;
+    public void setToken(String token){
+        this.token = token;
     }
-}
 
+    public void setLexeme(String lexeme){
+        this.lexeme = lexeme;
+    }
+
+}

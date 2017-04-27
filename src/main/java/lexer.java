@@ -1,126 +1,148 @@
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.PushbackReader;
+
 /**
- * CS4380 W01
- Concepts of Programming Languages
- Professor: Jose M Garrido
- Students: Juan E. Tenorio Arzola, Thomas Nguyen, Andrew Shatz
+ * Created by Tenorio on 4/23/2017.
  */
+public class Lexer {
 
-import java.io.*;
+    public PushbackReader fp;
+    private int counter = 1;
 
-public class lexer {
-
-    private FileInputStream url;
-    private BufferedReader sb;
-    private char ch;
-    private static char EOF = (char) (-1);
-    int counter = 1;
-
-    public lexer(FileInputStream url)
-    {
-        openFile(url);
-
-        ch = read();
-    }
-
-
-
-    private void openFile(FileInputStream url){
-        this.url = url;
-        sb = new BufferedReader(new InputStreamReader(url));
-    }
-
-
-
-    // Reads character by character
-    private char read(){
+    public Lexer(String file){
         try {
-            return (char) (sb.read());
-        } catch (IOException e) {
+            fp = new PushbackReader(new  FileReader(file));
+        } catch (FileNotFoundException e) {
             e.printStackTrace();
-            return EOF; // EOF
+            System.out.print("File not found");
         }
     }
 
-    public token getNextToken(){
 
-        int state =1;
-        int numBuffer =0;
-        String alphaBuffer = "";
-        boolean skipped = false;
-        while(true){
+    public Token nextToken() throws IOException {
 
-            if(ch == EOF && !skipped) { // EOF
-
-                skipped = true;
-            }
-            else if(skipped) {
-                try {
-                    sb.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-                return null;
-            }
+        int state = 1;
+        int digit = 0;
+        String alphaBuffer = null;
+        char ch;
+        ch = (char) fp.read();
+        while (true)
+        {
 
 
-
-            switch (state) {
+            switch (state)
+            {
 
                 case 1:
-                    switch (ch) {
-                        case ' ':
-                            ch = read(); // spaces can be ignored
-                            continue;
-                        case '.':
-                            ch = read();
 
-                            return new token("PD", ".", counter);
+                    switch (ch)
+                    {
+                        case '(':
+
+                            return new Token("LP", "(", counter);
+
+                        case ')':
+
+                            return new Token("RP", ")", counter);
+
+                        case '{':
+
+                            return new Token("LC", "{", counter);
+
+                        case '}':
+
+                            return new Token("RC", "}", counter);
+
+                        case '[':
+                            return new Token("LB", "[", counter);
+
+                        case ']':
+                            return new Token("RB", "]", counter);
+
+
+                        case '\n':
+                            ch = (char) fp.read(); // spaces can be ignored
+                            counter++;
+                            continue;
+                        case '\b':
+                        case '\f':
+                        case '\r':
+                        case '\t':
+                        case ' ':
+                            ch = (char) fp.read(); // spaces can be ignored
+
+                            continue;
+
+                        case '.':
+
+                            return new Token("PD", ".", counter);
+
                         case '+':
-                            return new token("SM", "+", counter);
-                        case '/':
-                            return new token("DV", "/", counter);
-                        case '*':
-                            return new token("MP", "*", counter);
+
+                            return new Token("SM", "+",counter);
+
                         case '=':
-                            ch = read();
+
+                            ch = (char) fp.read();
                             state = 6;
                             continue;
+
                         case '-':
-                            return new token("ST", "-", counter);
+
+                            ch = (char) fp.read();
+                            state = 7;
+                            continue;
+
+                        case '*':
+
+                            return new Token("MUL", "*",counter);
+
+                        case '/':
+
+                            return new Token("DIV", "/",counter);
+
                         default:
                             state = 2;
                             continue;
-
                     }
 
-
-                    //  The case for when a number is scanned
                 case 2:
+
                     if (Character.isDigit(ch)) {
-                        numBuffer = 0;
-                        numBuffer += Character.getNumericValue(ch);
 
+                        digit = ch - '0';
                         state = 3;
-
-                        ch = read();
-                    } else {
+                        ch = (char) fp.read();
+                    }
+                    else {
                         state = 4;
                     }
+
                     continue;
 
-                    // Number is found by itself
                 case 3:
-                    if (Character.isDigit(ch)) {
-                        numBuffer *= 10;
-                        numBuffer += Character.getNumericValue(ch);
 
-                        ch = read();
-                    } else {
-                        return new token("NUM", String.valueOf(numBuffer), counter);
+                    if (Character.isDigit(ch)) {
+
+
+                        digit *= 10;
+                        digit += ch - '0';
+
+
+                        ch = (char) fp.read();
                     }
+
+                    else {
+
+                        return new Token("NUM", String.valueOf(digit),counter);
+
+                    }
+
                     continue;
 
-                    // Either a keyword is found or there is an invalid input
+
                 case 4:
 
                     if (Character.isAlphabetic(ch) || ch == '_') {
@@ -128,71 +150,88 @@ public class lexer {
                         alphaBuffer = "";
                         alphaBuffer += ch;
                         state = 5;
-                        ch = read();
-                    } else {
+                        ch = (char) fp.read();
+                    }
+
+                    else {
                         alphaBuffer = "";
                         alphaBuffer += ch;
-
-                        ch = read();
-                        return new token("INVALID", "Invalid input: " + alphaBuffer, counter );
+                        return new Token("INVALID: ", alphaBuffer,counter);
                     }
+
                     continue;
 
-                    // Keyword is found or a variable
                 case 5:
 
-                    if (Character.isAlphabetic(ch) || Character.isDigit(ch) || ch == '_') {
+                    if (Character.isAlphabetic(ch) || Character.isDigit(ch)|| ch == '_') {
+
                         alphaBuffer += ch;
-                        ch = read();
+                        ch = (char) fp.read();
                     }
-                    else
-                    {
-                        if (alphaBuffer.equals("int") || alphaBuffer.equals("then") || alphaBuffer.equals("type") ||
-                        alphaBuffer.equals("local") || alphaBuffer.equals("end") || alphaBuffer.equals("if") ||
-                        alphaBuffer.equals("while") || alphaBuffer.equals("not") || alphaBuffer.equals("do") )
-                        {
-                            return new token("KW", alphaBuffer, counter);
+
+                    else {
+
+                        fp.unread(ch);
+
+                        if (alphaBuffer == "then" || alphaBuffer == "type" || alphaBuffer == "local" || alphaBuffer == "end" ||
+                                alphaBuffer == "if" || alphaBuffer == "while" || alphaBuffer == "not" || alphaBuffer == "do") {
+                            return new Token("KW", alphaBuffer,counter);
                         }
-                        return new token("ID", alphaBuffer, counter);
+
+                        return new Token("ID", alphaBuffer,counter);
                     }
 
                     continue;
 
-                    // A boolean comparison is found or an assignment
                 case 6:
+
                     if (ch == '=') {
-                        ch = read();
-                        return new token("EQ", "==", counter);
-                    } else {
-                        return new token("AS", "=", counter );
+
+                        return new Token("IEQ", "==",counter);
                     }
+
+                    else {
+                        return new Token("EQ", "=",counter);
+                    }
+
                 case 7:
-                    if (ch == '(') {
-                        ch = read();
-                        return new token("LP", "(", counter);
+
+                    if (ch == '-') {
+                        alphaBuffer = "--";
+                        ch = (char) fp.read();
+                        state = 8;
+
                     }
-                    ch = read();
+
+                    else {
+                        return new Token("SUB", "-",counter);
+                    }
                     continue;
+
                 case 8:
-                    if (ch == ')') {
-                        ch = read();
-                        return new token("RP", ")", counter);
+
+                    if (ch != '\n') {
+
+                        alphaBuffer += ch;
+
+                        ch = (char) fp.read();
                     }
-                    ch = read();
+                    else {
+                        return new Token("COM", alphaBuffer,counter);
+                    }
+
                     continue;
+
                 case 9:
+
                     if (ch == '\n') {
                         state = 1;
                     }
-                    ch = read();
-                case 10:
-                    if (alphaBuffer.equals("EOS"))
-                    {
-                        return new token("EOS", alphaBuffer, counter);
-                    }
+                    continue;
+
             }
+
         }
+
     }
-
-
 }
